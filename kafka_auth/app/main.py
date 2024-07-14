@@ -55,10 +55,14 @@ def login_request(user_data: Annotated[Any, Depends(OAuth2PasswordRequestForm)])
 
     return{"username": user_data.username, "access_token": generated_token}
 
+
 @app.get("/all-user")
 def get_all_users(token: Annotated[str, Depends(oauth2_scheme)]):
     return fake_db
 
+@app.get("/special-endpoint")
+def specia_endpoint(token: Annotated[str, Depends(oauth2_scheme)]):
+    return {"user details": "Authorized User", "token":token}
 
     
 @app.get("/get-token")
@@ -87,4 +91,8 @@ def decoding_token(access_token:str):
     except JWTError:
         return {"error": "Invalid token"}
 
+#Multi microservice architecture OAuth
 
+#step 1 # creating a wrapper endpoint that will call the login endpoint and return the access token
+
+#step 2 # importing oAuth2PasswordBearer - token 
