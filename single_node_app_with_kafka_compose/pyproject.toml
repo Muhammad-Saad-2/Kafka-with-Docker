@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "kafka_compose_single_broker"
+name = "single_node_app_with_kafka_compose"
 version = "0.1.0"
 description = ""
 authors = ["Muhammad Saad <saadjameel2001@gmail.com>"]
