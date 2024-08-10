@@ -14,7 +14,10 @@ RUN apt-get update && apt-get install -y \
 RUN pip install poetry
 
 # Copy the current directory contents into the container at /code
+COPY  ./pyproject.toml /code/
 COPY . /code/
+
+# ADD ./dockertest /code/dockertest 
 
 # Configuration to avoid creating virtual environments inside the Docker container
 RUN poetry config virtualenvs.create false
@@ -26,4 +29,4 @@ RUN poetry install
 EXPOSE 8000
 
 # Run the app. CMD can be overridden when starting the container
-CMD ["poetry", "run", "uvicorn", "app.main1:app", "--host", "0.0.0.0", "--reload"]
+CMD ["poetry", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--reload"]
