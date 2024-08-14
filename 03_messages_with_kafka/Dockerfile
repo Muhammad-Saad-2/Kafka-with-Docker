@@ -14,7 +14,6 @@ RUN apt-get update && apt-get install -y \
 RUN pip install poetry
 
 # Copy the current directory contents into the container at /code
-COPY  ./pyproject.toml /code/
 COPY . /code/
 
 # ADD ./dockertest /code/dockertest 

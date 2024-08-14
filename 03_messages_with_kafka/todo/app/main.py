@@ -1,58 +1,37 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from typing import List, Optional
-from todo.app import settings
-from aiokafka import AIOKafkaProducer, AIOKafkaConsumer
-from confluent_kafka.admin import AdminClient, NewTopic
+from fastapi import FastAPI, Depends, HTTPException
+from sqlalchemy.orm import Session
+from . import crud, models, schemas
+from .database import SessionLocal, init_db
 
 app = FastAPI()
 
-# Order model
-class Order(BaseModel):
-    id: int
-    customer_name: str
-    item: str
-    quantity: int
-    price: float
+@app.on_event("startup")
+def on_startup():
+    init_db()
 
-# In-memory orders storage
-orders = []
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
-# Create an order
-@app.post("/orders/", response_model=Order)
-async def create_order(order: Order):
-    producer=AIOKafkaProducer(settings.BOOTSTRAP_SERVER)
-    await producer.start()
-    orders.append(order)
-    return order
+@app.post("/orders/", response_model=schemas.Order)
+def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
+    return crud.create_order(db=db, order=order)
 
-# Get all orders
-@app.get("/orders/", response_model=List[Order])
-def read_orders():
-    return orders
+@app.get("/orders/{order_id}", response_model=schemas.Order)
+def read_order(order_id: int, db: Session = Depends(get_db)):
+    db_order = crud.get_order(db, order_id=order_id)
+    if db_order is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return db_order
 
-# Get a single order by ID
-@app.get("/orders/{order_id}", response_model=Order)
-def read_order(order_id: int):
-    for order in orders:
-        if order.id == order_id:
-            return order
-    raise HTTPException(status_code=404, detail="Order not found")
+@app.put("/orders/{order_id}", response_model=schemas.Order)
+def update_order(order_id: int, order: schemas.OrderCreate, db: Session = Depends(get_db)):
+    return crud.update_order(db=db, order_id=order_id, order=order)
 
-# Update an order
-@app.put("/orders/{order_id}", response_model=Order)
-def update_order(order_id: int, order_update: Order):
-    for index, order in enumerate(orders):
-        if order.id == order_id:
-            orders[index] = order_update
-            return order_update
-    raise HTTPException(status_code=404, detail="Order not found")
-
-# Delete an order
-@app.delete("/orders/{order_id}", response_model=Order)
-def delete_order(order_id: int):
-    for index, order in enumerate(orders):
-        if order.id == order_id:
-            return orders.pop(index)
-    raise HTTPException(status_code=404, detail="Order not found")
-
+@app.delete("/orders/{order_id}")
+def delete_order(order_id: int, db: Session = Depends(get_db)):
+    crud.delete_order(db=db, order_id=order_id)
+    return {"message": "Order deleted"}

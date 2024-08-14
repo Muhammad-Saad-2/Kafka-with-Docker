@@ -1,91 +1,45 @@
-#service 1
 version: '3.8'
-name: messaging_test 
+
 services:
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    # volumes:
-    #   - . /todo/code
-    depends_on:
-      - postgres_db
-      - broker
-    ports:
-      - "8000:8000"
-
-  #service 2
-  # api2:
-  #   build:
-  #     context: ./service02
-  #     dockerfile: Dockerfile
-  #   volumes:
-  #     - ./service02:/code
-  #   depends_on:
-  #     - postgres_db
-  #     - broker
-  #   ports:
-  #   - "8002:8002"
-  # service for database
-  postgres_db:
-    image: postgres:latest
-    restart: always
-    container_name: db_container 
+  postgres:
+    image: postgres:13
     environment:
-        POSTGRES_USER: postgres
-        POSTGRES_PASSWORD: sweethomealabama
-        POSTGRES_DB: postgres 
-    ports:
-      - "3032:3032"
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: db
     volumes:
-      - postgres_db:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
 
-  #Service for broker 
-
-  broker:
-    image: apache/kafka:latest
-    hostname: broker 
-    container_name: broker 
+  kafka:
+    image: 'apache/kafka:3.7.0'
     environment:
-      KAFKA_NODE_ID: 1
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
-      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT_HOST://localhost:9092,PLAINTEXT://broker:19092'
-      KAFKA_PROCESS_ROLES: 'broker,controller'
-      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@broker:29093'
-      KAFKA_LISTENERS: 'CONTROLLER://:29093,PLAINTEXT_HOST://:9092,PLAINTEXT://:19092'
-      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
-      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
-      CLUSTER_ID: '4L6g3nShT-eMCtK--X86sw'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
+      KAFKA_BROKER_ID: 1
+      KAFKA_LOG_DIRS: /kafka/kafka-logs
+    ports:
+      - "9092:9092"
 
-  #service for kafka ui 
+  app:
+    build: .
+    ports:
+      - "8000:80"
+    depends_on:
+      - postgres
+      - kafka
 
-  kafka_ui:
-    image: provectuslabs/kafka-ui
-    container_name: kafka_ui
-    ports: 
-      - "8080:8080"
+  kafdrop:
+    image: obsidiandynamics/kafdrop
     environment:
-      KAFKA_CLUSTERS_0_NAME: 'test cluster'
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: 'broker:19092'
-      DYNAMIC_CONFIG_ENABLED: 'true'
-      depends_on: broker
+      KAFKA_BROKERCONNECT: 'kafka:9092'
+      JVM_OPTS: "-Xms32M -Xmx64M"
+    ports:
+      - "9000:9000"
+    depends_on:
+      - kafka
 
 volumes:
-  postgres_db:
-    driver: local
-
-networks:
-  default:
-    driver: bridge
-      
-     
-
-
-
-
-
+  postgres_data:
